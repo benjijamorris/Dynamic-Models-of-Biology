@@ -5,11 +5,14 @@ birds-own [
   nearest-neighbor   ;; closest one of our flockmates
   detection-radius   ;; how far away they can detect the predator
   detection-angle    ;; vision radius for detecting predator
-  escape-angle
+  escape-angle       ;; angle to turn away afer seeing predator
+  escape-velocity-scale ; how much faster to go after seeing predator
   energy
+  velocity
 ]
 predators-own[
   targets ;; birds in its vision and radius
+  velocity
 ]
 
 to setup
@@ -23,10 +26,13 @@ to setup
       set detection-angle random 180
       set escape-angle random 90
       set energy 100
+      set velocity 0.2
+      set escape-velocity-scale (random 100 )/ 100  + 1 ; between 1 and 2 times faster
     ]
   create-predators 1
     [set color white
      set size 2
+     set velocity 0.2
      setxy random-xcor random-ycor
     ]
   reset-ticks
@@ -35,17 +41,37 @@ end
 to go
   ask birds [ flock ]
   ask predators [chase]
+  ask birds [evade]
   ask predators [kill]
+
   ;; the following line is used to make the turtles
   ;; animate more smoothly.
-  repeat 5 [ ask turtles [ fd 0.2 ] display ]
+  repeat 5 [ ask turtles [ fd velocity ] display ]
   ;; for greater efficiency, at the expense of smooth
   ;; animation, substitute the following line instead:
   ;;   ask turtles [ fd 1 ]
   tick
 end
 
-to kill
+
+to evade ; birds evasive behavior from predator
+  ifelse count predators in-cone detection-radius detection-angle > 0 ; predator is viewable by the bird
+  [
+    ifelse random 2 = 0
+      [ rt escape-angle]
+      [ lt escape-angle]
+    set velocity  velocity * escape-velocity-scale ; double velocity
+
+  ]
+  [
+    set velocity  0.2 ; should be reset to original velocity
+  ]
+end
+
+
+
+
+to kill ; removes birds with probability kill-probability within predator's killing radius and angle
   find-targets
   if any? targets
     [
@@ -61,7 +87,7 @@ to-report binomial [n p] ; returns number of randomly selected numbers below pro
     report bin_ct
 end
 
-to chase ;; predator procedure
+to chase ;; predator procedure, directs predator towards center of flock
   let x  mean [xcor] of birds
   let y  mean [ycor] of birds
   turn-towards atan x y 180
@@ -77,7 +103,7 @@ to flock  ;; turtle procedure
           cohere ] ]
 end
 
-to find-targets;; predator procedure
+to find-targets;; predator procedure, finds birds within predator's kill-radius and kill-angle
   set targets other birds in-cone kill-radius kill-angle
 end
 
@@ -223,7 +249,7 @@ population
 population
 1.0
 1000.0
-121.0
+664.0
 1.0
 1
 NIL
@@ -328,7 +354,7 @@ kill-probability
 kill-probability
 0
 1
-0.5
+0.08
 0.01
 1
 NIL
@@ -348,6 +374,24 @@ kill-angle
 1
 degrees
 HORIZONTAL
+
+PLOT
+846
+38
+1046
+188
+plot 1
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot count turtles"
 
 @#$#@#$#@
 ## WHAT IS IT?
