@@ -3,6 +3,13 @@ breed [birds bird]
 birds-own [
   flockmates         ;; agentset of nearby turtles
   nearest-neighbor   ;; closest one of our flockmates
+  detection-radius   ;; how far away they can detect the predator
+  detection-angle    ;; vision radius for detecting predator
+  escape-angle
+  energy
+]
+predators-own[
+  targets ;; birds in its vision and radius
 ]
 
 to setup
@@ -12,6 +19,10 @@ to setup
       set size 1.5  ;; easier to see
       setxy random-xcor random-ycor
       set flockmates no-turtles
+      set detection-radius random 10
+      set detection-angle random 180
+      set escape-angle random 90
+      set energy 100
     ]
   create-predators 1
     [set color white
@@ -24,6 +35,7 @@ end
 to go
   ask birds [ flock ]
   ask predators [chase]
+  ask predators [kill]
   ;; the following line is used to make the turtles
   ;; animate more smoothly.
   repeat 5 [ ask turtles [ fd 0.2 ] display ]
@@ -31,6 +43,22 @@ to go
   ;; animation, substitute the following line instead:
   ;;   ask turtles [ fd 1 ]
   tick
+end
+
+to kill
+  find-targets
+  if any? targets
+    [
+      ask n-of binomial count targets kill-probability targets [die] ;  randomly kills however many turtles are reported by binomial function
+    ]
+end
+
+to-report binomial [n p] ; returns number of randomly selected numbers below probability p
+    let bin_ct 0
+    repeat n [
+        if random-float 1 < p [set bin_ct bin_ct + 1]
+    ]
+    report bin_ct
 end
 
 to chase ;; predator procedure
@@ -47,6 +75,10 @@ to flock  ;; turtle procedure
         [ separate ]
         [ align
           cohere ] ]
+end
+
+to find-targets;; predator procedure
+  set targets other birds in-cone kill-radius kill-angle
 end
 
 to find-flockmates  ;; turtle procedure
@@ -270,6 +302,51 @@ minimum-separation
 0.25
 1
 patches
+HORIZONTAL
+
+SLIDER
+3
+327
+175
+360
+kill-radius
+kill-radius
+0
+10
+9.0
+1
+1
+patches
+HORIZONTAL
+
+SLIDER
+0
+378
+172
+411
+kill-probability
+kill-probability
+0
+1
+0.5
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+0
+418
+172
+451
+kill-angle
+kill-angle
+0
+180
+91.0
+1
+1
+degrees
 HORIZONTAL
 
 @#$#@#$#@
