@@ -35,6 +35,7 @@ to setup
      set velocity 0.2
      setxy random-xcor random-ycor
     ]
+
   reset-ticks
 end
 
@@ -43,25 +44,33 @@ to go
   ask predators [chase]
   ask birds [evade]
   ask predators [kill]
+  mate ;;random mating to maintain population size
+
 
   ;; the following line is used to make the turtles
   ;; animate more smoothly.
   repeat 5 [ ask turtles [ fd velocity ] display ]
   ;; for greater efficiency, at the expense of smooth
   ;; animation, substitute the following line instead:
-  ;;   ask turtles [ fd 1 ]
+  ;;ask turtles [ fd velocity ]
   tick
+end
+
+to mate
+  if ticks mod 100 = 0
+  [
+    ask n-of (population - count birds) birds [hatch 1]
+  ]
 end
 
 
 to evade ; birds evasive behavior from predator
   ifelse count predators in-cone detection-radius detection-angle > 0 ; predator is viewable by the bird
   [
-    ifelse random 2 = 0
+    ifelse random 2 = 0 ; randomly choose to turn left or right
       [ rt escape-angle]
       [ lt escape-angle]
-    set velocity  velocity * escape-velocity-scale ; double velocity
-
+    set velocity  velocity * escape-velocity-scale ; scale velocity for escape
   ]
   [
     set velocity  0.2 ; should be reset to original velocity
@@ -75,7 +84,7 @@ to kill ; removes birds with probability kill-probability within predator's kill
   find-targets
   if any? targets
     [
-      ask n-of binomial count targets kill-probability targets [die] ;  randomly kills however many turtles are reported by binomial function
+      ask n-of binomial count targets kill-probability targets [die] ;  randomly kills however many birds in predator's cone are reported by binomial function
     ]
 end
 
@@ -249,7 +258,7 @@ population
 population
 1.0
 1000.0
-664.0
+1000.0
 1.0
 1
 NIL
@@ -309,7 +318,7 @@ vision
 vision
 0.0
 10.0
-5.0
+9.5
 0.5
 1
 patches
@@ -380,9 +389,9 @@ PLOT
 38
 1046
 188
-plot 1
-NIL
-NIL
+Population
+Ticks
+Population
 0.0
 10.0
 0.0
@@ -392,6 +401,78 @@ false
 "" ""
 PENS
 "default" 1.0 0 -16777216 true "" "plot count turtles"
+
+PLOT
+837
+231
+1037
+381
+Histogram of detection radius
+Detection radius
+count
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "histogram [detection-radius] of birds"
+
+PLOT
+837
+390
+1037
+540
+Histogram of detection angle
+Detection angle
+NIL
+0.0
+180.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "histogram [detection-angle] of birds"
+
+PLOT
+1052
+232
+1252
+382
+Histogram of escape angle
+Escape angle
+NIL
+0.0
+90.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "histogram [escape-angle] of birds"
+
+PLOT
+1055
+393
+1255
+543
+Histogram of escape velocity
+Escape Velocity
+Count
+0.0
+2.0
+0.0
+534.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "histogram [escape-velocity-scale] of birds"
 
 @#$#@#$#@
 ## WHAT IS IT?
