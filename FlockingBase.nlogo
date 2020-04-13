@@ -9,6 +9,8 @@ birds-own [
   escape-velocity-scale ; how much faster to go after seeing predator
   energy
   velocity
+  being-pursued      ;; true when being predated
+  neighbor-sensitivity ;; number of neighbors that have to being predated to induce a predator response in
 ]
 predators-own[
   targets ;; birds in its vision and radius
@@ -28,24 +30,29 @@ to setup
       set energy 100
       set velocity 0.2
       set escape-velocity-scale (random 100 )/ 100  + 1 ; between 1 and 2 times faster
+      set being-pursued false
+      set neighbor-sensitivity random 5 + 1 ; between 1 and 5
     ]
-  create-predators 1
-    [set color white
-     set size 2
-     set velocity 0.2
-     setxy random-xcor random-ycor
-    ]
+
 
   reset-ticks
 end
 
 to go
+  if ticks = 100
+  [
+     create-predators 1
+    [set color white
+     set size 2
+     set velocity 0.2
+     setxy random-xcor random-ycor
+    ]
+  ]
   ask birds [ flock ]
   ask predators [chase]
   ask birds [evade]
   ask predators [kill]
   mate ;;random mating to maintain population size
-
 
   ;; the following line is used to make the turtles
   ;; animate more smoothly.
@@ -59,25 +66,31 @@ end
 to mate
   if ticks mod 100 = 0
   [
-    ask n-of (population - count birds) birds [hatch 1]
+    ask n-of (population - count birds) birds with [energy > 70] [hatch 1 [set color green]] ;; only allow high-energy birds to reproduce
   ]
 end
 
 
 to evade ; birds evasive behavior from predator
-  ifelse count predators in-cone detection-radius detection-angle > 0 ; predator is viewable by the bird
+  ;                                 predator is viewable by bird          or enough neighbors are being pursued to trigger evasion
+  ifelse count predators in-cone detection-radius detection-angle > 0  or count birds with [being-pursued = true] in-cone detection-radius detection-angle > neighbor-sensitivity;
   [
     ifelse random 2 = 0 ; randomly choose to turn left or right
       [ rt escape-angle]
       [ lt escape-angle]
     set velocity  velocity * escape-velocity-scale ; scale velocity for escape
+    set energy energy - (escape-velocity-scale * escape-angle * 0.1) ;; decrease energy more for higher-specificity responses
+    if energy < 100 [die] ; kill birds with no energy
+    set being-pursued true
+    set color red
   ]
   [
-    set velocity  0.2 ; should be reset to original velocity
+    set velocity  0.2 ; reset to original velocity
+    if energy < 100 [set energy energy + 0.1]; restore energy if not being attacked
+    set being-pursued false
+    set color yellow
   ]
 end
-
-
 
 
 to kill ; removes birds with probability kill-probability within predator's killing radius and angle
@@ -258,7 +271,7 @@ population
 population
 1.0
 1000.0
-1000.0
+289.0
 1.0
 1
 NIL
@@ -318,7 +331,7 @@ vision
 vision
 0.0
 10.0
-9.5
+5.0
 0.5
 1
 patches
@@ -348,7 +361,7 @@ kill-radius
 kill-radius
 0
 10
-9.0
+1.0
 1
 1
 patches
@@ -363,7 +376,7 @@ kill-probability
 kill-probability
 0
 1
-0.08
+0.03
 0.01
 1
 NIL
@@ -385,13 +398,13 @@ degrees
 HORIZONTAL
 
 PLOT
-846
-38
-1046
-188
-Population
-Ticks
-Population
+842
+52
+1042
+202
+num turtles
+NIL
+NIL
 0.0
 10.0
 0.0
@@ -403,76 +416,22 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot count turtles"
 
 PLOT
-837
-231
-1037
-381
-Histogram of detection radius
-Detection radius
+835
+239
+1035
+389
+energy
+energy
 count
-0.0
-10.0
-0.0
-10.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -16777216 true "" "histogram [detection-radius] of birds"
-
-PLOT
-837
-390
-1037
-540
-Histogram of detection angle
-Detection angle
-NIL
-0.0
-180.0
+50.0
+110.0
 0.0
 10.0
 true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "histogram [detection-angle] of birds"
-
-PLOT
-1052
-232
-1252
-382
-Histogram of escape angle
-Escape angle
-NIL
-0.0
-90.0
-0.0
-10.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -16777216 true "" "histogram [escape-angle] of birds"
-
-PLOT
-1055
-393
-1255
-543
-Histogram of escape velocity
-Escape Velocity
-Count
-0.0
-2.0
-0.0
-534.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -16777216 true "" "histogram [escape-velocity-scale] of birds"
+"default" 1.0 0 -16777216 true "" "histogram [energy] of birds"
 
 @#$#@#$#@
 ## WHAT IS IT?
