@@ -1,5 +1,6 @@
 breed [predators predator]
 breed [birds bird]
+globals [median-energy]
 birds-own [
   flockmates         ;; agentset of nearby turtles
   nearest-neighbor   ;; closest one of our flockmates
@@ -11,10 +12,12 @@ birds-own [
   velocity
   being-pursued      ;; true when being predated
   neighbor-sensitivity ;; number of neighbors that have to being predated to induce a predator response in
+
 ]
 predators-own[
   targets ;; birds in its vision and radius
   velocity
+  attack-mode
 ]
 
 to setup
@@ -29,30 +32,30 @@ to setup
       set escape-angle random 90
       set energy 100
       set velocity 0.2
-      set escape-velocity-scale (random 100 )/ 100  + 1 ; between 1 and 2 times faster
+      set escape-velocity-scale (random 200 )/ 100  + 1 ; between 1 and 3 times faster
       set being-pursued false
       set neighbor-sensitivity random 5 + 1 ; between 1 and 5
     ]
-
-
+  create-predators 10
+    [set color blue
+     set size 2
+     set velocity 0.2
+     set attack-mode true
+     setxy random-xcor random-ycor
+    ]
   reset-ticks
 end
 
 to go
-  if ticks = 100
-  [
-     create-predators 1
-    [set color white
-     set size 2
-     set velocity 0.2
-     setxy random-xcor random-ycor
-    ]
-  ]
+
   ask birds [ flock ]
   ask predators [chase]
   ask birds [evade]
+  ask predators [reverse-attack-mode]
   ask predators [kill]
-  mate ;;random mating to maintain population size
+  set median-energy median[energy] of birds
+  ask birds [mate-by-energy]
+  ;;mate ;;random mating to maintain population size
 
   ;; the following line is used to make the turtles
   ;; animate more smoothly.
@@ -61,6 +64,27 @@ to go
   ;; animation, substitute the following line instead:
   ;;ask turtles [ fd velocity ]
   tick
+end
+
+to reverse-attack-mode ;every 50s,alternate whether the predator is attacking (i.e. targeting flock center + removing birds) or just cruisin
+  if ticks mod 50 = 0
+  [
+    if-else attack-mode = false [
+      set attack-mode true
+      set color blue
+    ][
+      set attack-mode false
+      set color white
+    ]
+  ]
+end
+
+to mate-by-energy
+  if ticks mod 100 = 0
+  [
+    let logistic  (160.3873 / (1 +  537 * exp(-0.028281 * energy)))
+    if binomial 1 logistic > 0 [hatch 1 [set color green]]
+  ]
 end
 
 to mate
@@ -80,25 +104,27 @@ to evade ; birds evasive behavior from predator
       [ lt escape-angle]
     set velocity  velocity * escape-velocity-scale ; scale velocity for escape
     set energy energy - (escape-velocity-scale * escape-angle * 0.1) ;; decrease energy more for higher-specificity responses
-    if energy < 100 [die] ; kill birds with no energy
+    if energy < 0 [die] ; kill birds with no energy
     set being-pursued true
     set color red
   ]
   [
     set velocity  0.2 ; reset to original velocity
-    if energy < 100 [set energy energy + 0.1]; restore energy if not being attacked
+    if energy < 100 [set energy energy + 0.05]; restore energy if not being attacked
     set being-pursued false
     set color yellow
   ]
 end
 
 
-to kill ; removes birds with probability kill-probability within predator's killing radius and angle
-  find-targets
-  if any? targets
+to kill ; removes birds with probability(kill-probability) within predator's killing radius and angle
+  if attack-mode = true [
+    find-targets
+    if any? targets
     [
       ask n-of binomial count targets kill-probability targets [die] ;  randomly kills however many birds in predator's cone are reported by binomial function
     ]
+  ]
 end
 
 to-report binomial [n p] ; returns number of randomly selected numbers below probability p
@@ -110,9 +136,12 @@ to-report binomial [n p] ; returns number of randomly selected numbers below pro
 end
 
 to chase ;; predator procedure, directs predator towards center of flock
-  let x  mean [xcor] of birds
-  let y  mean [ycor] of birds
-  turn-towards atan x y 180
+  if attack-mode = true[
+    let x  mean [xcor] of birds
+    let y  mean [ycor] of birds
+    turn-towards atan x y 180
+  ]
+
 end
 
 to flock  ;; turtle procedure
@@ -271,7 +300,7 @@ population
 population
 1.0
 1000.0
-289.0
+304.0
 1.0
 1
 NIL
@@ -361,7 +390,7 @@ kill-radius
 kill-radius
 0
 10
-1.0
+4.0
 1
 1
 patches
@@ -376,7 +405,7 @@ kill-probability
 kill-probability
 0
 1
-0.03
+0.59
 0.01
 1
 NIL
@@ -391,7 +420,7 @@ kill-angle
 kill-angle
 0
 180
-91.0
+180.0
 1
 1
 degrees
@@ -423,7 +452,7 @@ PLOT
 energy
 energy
 count
-50.0
+0.0
 110.0
 0.0
 10.0
