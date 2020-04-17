@@ -1,6 +1,9 @@
 breed [predators predator]
 breed [birds bird]
-globals [median-energy]
+globals [
+  median-energy
+  escapes
+]
 birds-own [
   flockmates         ;; agentset of nearby turtles
   nearest-neighbor   ;; closest one of our flockmates
@@ -104,7 +107,9 @@ to evade ; birds evasive behavior from predator
       [ lt escape-angle]
     set velocity  velocity * escape-velocity-scale ; scale velocity for escape
     set energy energy - (escape-velocity-scale * escape-angle * 0.1) ;; decrease energy more for higher-specificity responses
-    if energy < 0 [die] ; kill birds with no energy
+    ifelse energy < 0
+    [die] ; kill birds with no energy
+    [set escapes (escapes + 1)] ;; increase number of escapes
     set being-pursued true
     set color red
   ]
@@ -113,6 +118,7 @@ to evade ; birds evasive behavior from predator
     if energy < 100 [set energy energy + 0.05]; restore energy if not being attacked
     set being-pursued false
     set color yellow
+    flock
   ]
 end
 
@@ -160,6 +166,7 @@ end
 
 to find-flockmates  ;; turtle procedure
   set flockmates other birds in-radius vision
+  ;set flockmates (birds in-radius vision) with [who != who-of myself]
 end
 
 to find-nearest-neighbor ;; turtle procedure
@@ -390,7 +397,7 @@ kill-radius
 kill-radius
 0
 10
-4.0
+5.0
 1
 1
 patches
@@ -405,7 +412,7 @@ kill-probability
 kill-probability
 0
 1
-0.59
+0.31
 0.01
 1
 NIL
