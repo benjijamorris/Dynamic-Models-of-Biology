@@ -1,8 +1,8 @@
 breed [predators predator]
 breed [birds bird]
 globals [
-  median-energy
   escapes
+  best-patches
 ]
 birds-own [
   flockmates         ;; agentset of nearby turtles
@@ -21,6 +21,10 @@ predators-own[
   targets ;; birds in its vision and radius
   velocity
   attack-mode
+  closest-bird
+]
+patches-own[
+  bird-count
 ]
 
 to setup
@@ -34,16 +38,16 @@ to setup
       set detection-angle random 180
       set escape-angle random 90
       set energy 100
-      set velocity 0.2
+      set velocity 0.25
       set escape-velocity-scale (random 200 )/ 100  + 1 ; between 1 and 3 times faster
       set being-pursued false
       set neighbor-sensitivity random 5 + 1 ; between 1 and 5
     ]
   create-predators 10
-    [set color blue
+    [set color white
      set size 2
-     set velocity 0.2
-     set attack-mode true
+     set velocity 0.25
+     set attack-mode false
      setxy random-xcor random-ycor
     ]
   reset-ticks
@@ -52,48 +56,66 @@ end
 to go
 
   ask birds [ flock ]
-  ask predators [chase]
+
+  ;ask predators [find-best-patch]
+ ; ask predators [chase-best-patch]
+  ask predators [chase-closest-bird]
+
   ask birds [evade]
   ask predators [reverse-attack-mode]
   ask predators [kill]
-  set median-energy median[energy] of birds
   ask birds [mate-by-energy]
-  ;;mate ;;random mating to maintain population size
+
+
 
   ;; the following line is used to make the turtles
   ;; animate more smoothly.
-  repeat 5 [ ask turtles [ fd velocity ] display ]
+;  repeat 5 [ ask turtles [ fd velocity ] display ]
   ;; for greater efficiency, at the expense of smooth
   ;; animation, substitute the following line instead:
-  ;;ask turtles [ fd velocity ]
+  ask turtles [ fd velocity ]
   tick
 end
 
-to reverse-attack-mode ;every 50s,alternate whether the predator is attacking (i.e. targeting flock center + removing birds) or just cruisin
-  if ticks mod 50 = 0
+to chase-closest-bird
+  if attack-mode = true[
+    find-targets
+    find-nearest-neighbor-predators
+    if  closest-bird != nobody [
+      turn-towards atan ([xcor] of closest-bird) ([ycor] of closest-bird) 180
+    ]
+  ]
+end
+
+to find-best-patch
+  if attack-mode = true [
+    set best-patches patches with-max [count birds-here]
+  ]
+end
+
+
+to reverse-attack-mode ;every 50 ticks, alternate whether the predator is attacking (i.e. targeting flock center + removing birds) or just cruisin
+  if ticks mod 200 = 0 and ticks > 0 ;; don't reverse at first step
   [
-    if-else attack-mode = false [
-      set attack-mode true
+    set attack-mode not attack-mode
+    set color white
+    set velocity 0.1
+    if attack-mode = true[
       set color blue
-    ][
-      set attack-mode false
-      set color white
+      set velocity 0.3
     ]
   ]
 end
 
 to mate-by-energy
-  if ticks mod 100 = 0
+  if ticks mod 100 = 0 and ticks > 0 ;; don't mate at the first step
   [
-    let logistic  (160.3873 / (1 +  537 * exp(-0.028281 * energy)))
-    if binomial 1 logistic > 0 [hatch 1 [set color green]]
-  ]
-end
-
-to mate
-  if ticks mod 100 = 0
-  [
-    ask n-of (population - count birds) birds with [energy > 70] [hatch 1 [set color green]] ;; only allow high-energy birds to reproduce
+    let logistic  (0.416998 / (1 +  87.1144 * exp(-0.0325973 * energy))) ; logistic function maxing out at 10% chance of reproduction at 100 energy
+    if binomial 1 logistic > 0 [hatch 1 [
+        set color green
+        setxy (xcor  + random 10 - 5) (ycor + random 10 - 5) ; jitter from parent location so the birds aren't identical
+      ]
+    ]
   ]
 end
 
@@ -141,13 +163,13 @@ to-report binomial [n p] ; returns number of randomly selected numbers below pro
     report bin_ct
 end
 
-to chase ;; predator procedure, directs predator towards center of flock
+to chase-best-patch ;; predator procedure, directs predator towards center of flock
   if attack-mode = true[
-    let x  mean [xcor] of birds
-    let y  mean [ycor] of birds
-    turn-towards atan x y 180
+;    let x  mean [xcor] of birds
+;    let y  mean [ycor] of birds
+    let closest-patch min-one-of best-patches [distance myself]
+    turn-towards atan ([pxcor] of closest-patch + 0.000001) ([pycor] of closest-patch + 0.000001) 180
   ]
-
 end
 
 to flock  ;; turtle procedure
@@ -171,6 +193,10 @@ end
 
 to find-nearest-neighbor ;; turtle procedure
   set nearest-neighbor min-one-of flockmates [distance myself]
+end
+
+to find-nearest-neighbor-predators
+  set closest-bird min-one-of targets [distance myself]
 end
 
 ;;; SEPARATE
@@ -307,7 +333,7 @@ population
 population
 1.0
 1000.0
-304.0
+188.0
 1.0
 1
 NIL
@@ -397,7 +423,7 @@ kill-radius
 kill-radius
 0
 10
-5.0
+3.0
 1
 1
 patches
@@ -412,7 +438,7 @@ kill-probability
 kill-probability
 0
 1
-0.31
+0.17
 0.01
 1
 NIL
@@ -427,7 +453,7 @@ kill-angle
 kill-angle
 0
 180
-180.0
+132.0
 1
 1
 degrees
@@ -449,7 +475,7 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plot count turtles"
+"default" 1.0 0 -16777216 true "" "plot count birds"
 
 PLOT
 835
@@ -468,6 +494,24 @@ false
 "" ""
 PENS
 "default" 1.0 0 -16777216 true "" "histogram [energy] of birds"
+
+PLOT
+1247
+234
+1447
+384
+plot 1
+NIL
+NIL
+0.0
+3.0
+0.0
+3.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot mean [escape-velocity-scale] of birds"
 
 @#$#@#$#@
 ## WHAT IS IT?
