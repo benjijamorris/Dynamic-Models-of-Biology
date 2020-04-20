@@ -3,6 +3,11 @@ breed [birds bird]
 globals [
   escapes
   best-patches
+  max-align-turn
+  max-cohere-turn
+  max-separate-turn
+  minimum-separation
+  vision
 ]
 birds-own [
   flockmates         ;; agentset of nearby turtles
@@ -35,8 +40,8 @@ to setup
       setxy random-xcor random-ycor
       set flockmates no-turtles
       set detection-radius random 10
-      set detection-angle random 180
-      set escape-angle random 90
+      set detection-angle random 360
+      set escape-angle random 180
       set energy 100
       set velocity 0.25
       set escape-velocity-scale (random 200 )/ 100  + 1 ; between 1 and 3 times faster
@@ -46,27 +51,28 @@ to setup
   create-predators 10
     [set color white
      set size 2
-     set velocity 0.25
+     set velocity 0.2
      set attack-mode false
      setxy random-xcor random-ycor
     ]
+  set max-align-turn 5.0
+  set max-cohere-turn 3.0
+  set max-separate-turn 1.5
+  set minimum-separation 1.0
+  set vision 5.0
+
   reset-ticks
 end
 
 to go
-
   ask birds [ flock ]
-
   ;ask predators [find-best-patch]
  ; ask predators [chase-best-patch]
   ask predators [chase-closest-bird]
-
   ask birds [evade]
   ask predators [reverse-attack-mode]
   ask predators [kill]
   ask birds [mate-by-energy]
-
-
 
   ;; the following line is used to make the turtles
   ;; animate more smoothly.
@@ -76,6 +82,7 @@ to go
   ask turtles [ fd velocity ]
   tick
 end
+
 
 to chase-closest-bird
   if attack-mode = true[
@@ -94,12 +101,12 @@ to find-best-patch
 end
 
 
-to reverse-attack-mode ;every 50 ticks, alternate whether the predator is attacking (i.e. targeting flock center + removing birds) or just cruisin
+to reverse-attack-mode ;every 200 ticks, alternate whether the predator is attacking (i.e. targeting flock center + removing birds) or just cruisin
   if ticks mod 200 = 0 and ticks > 0 ;; don't reverse at first step
   [
     set attack-mode not attack-mode
     set color white
-    set velocity 0.1
+    set velocity 0.2
     if attack-mode = true[
       set color blue
       set velocity 0.3
@@ -110,7 +117,7 @@ end
 to mate-by-energy
   if ticks mod 100 = 0 and ticks > 0 ;; don't mate at the first step
   [
-    let logistic  (0.416998 / (1 +  87.1144 * exp(-0.0325973 * energy))) ; logistic function maxing out at 10% chance of reproduction at 100 energy
+    let logistic  (0.316998 / (1 +  87.1144 * exp(-0.0325973 * energy))) ; logistic function maxing out at 10% chance of reproduction at 100 energy
     if binomial 1 logistic > 0 [hatch 1 [
         set color green
         setxy (xcor  + random 10 - 5) (ycor + random 10 - 5) ; jitter from parent location so the birds aren't identical
@@ -128,7 +135,7 @@ to evade ; birds evasive behavior from predator
       [ rt escape-angle]
       [ lt escape-angle]
     set velocity  velocity * escape-velocity-scale ; scale velocity for escape
-    set energy energy - (escape-velocity-scale * escape-angle * 0.1) ;; decrease energy more for higher-specificity responses
+    set energy energy - (escape-velocity-scale * escape-angle * 0.3) ;; decrease energy more for higher-specificity responses
     ifelse energy < 0
     [die] ; kill birds with no energy
     [set escapes (escapes + 1)] ;; increase number of escapes
@@ -137,7 +144,7 @@ to evade ; birds evasive behavior from predator
   ]
   [
     set velocity  0.2 ; reset to original velocity
-    if energy < 100 [set energy energy + 0.05]; restore energy if not being attacked
+    if energy < 100 [set energy energy + 0.025]; restore energy if not being attacked
     set being-pursued false
     set color yellow
     flock
@@ -156,11 +163,11 @@ to kill ; removes birds with probability(kill-probability) within predator's kil
 end
 
 to-report binomial [n p] ; returns number of randomly selected numbers below probability p
-    let bin_ct 0
+    let counter 0
     repeat n [
-        if random-float 1 < p [set bin_ct bin_ct + 1]
+        if random-float 1 < p [set counter counter + 1]
     ]
-    report bin_ct
+    report counter
 end
 
 to chase-best-patch ;; predator procedure, directs predator towards center of flock
@@ -340,81 +347,6 @@ NIL
 HORIZONTAL
 
 SLIDER
-4
-217
-237
-250
-max-align-turn
-max-align-turn
-0.0
-20.0
-5.0
-0.25
-1
-degrees
-HORIZONTAL
-
-SLIDER
-4
-251
-237
-284
-max-cohere-turn
-max-cohere-turn
-0.0
-20.0
-3.0
-0.25
-1
-degrees
-HORIZONTAL
-
-SLIDER
-4
-285
-237
-318
-max-separate-turn
-max-separate-turn
-0.0
-20.0
-1.5
-0.25
-1
-degrees
-HORIZONTAL
-
-SLIDER
-9
-135
-232
-168
-vision
-vision
-0.0
-10.0
-5.0
-0.5
-1
-patches
-HORIZONTAL
-
-SLIDER
-9
-169
-232
-202
-minimum-separation
-minimum-separation
-0.0
-5.0
-1.0
-0.25
-1
-patches
-HORIZONTAL
-
-SLIDER
 3
 327
 175
@@ -438,7 +370,7 @@ kill-probability
 kill-probability
 0
 1
-0.17
+0.32
 0.01
 1
 NIL
@@ -453,65 +385,11 @@ kill-angle
 kill-angle
 0
 180
-132.0
+108.0
 1
 1
 degrees
 HORIZONTAL
-
-PLOT
-842
-52
-1042
-202
-num turtles
-NIL
-NIL
-0.0
-10.0
-0.0
-10.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -16777216 true "" "plot count birds"
-
-PLOT
-835
-239
-1035
-389
-energy
-energy
-count
-0.0
-110.0
-0.0
-10.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -16777216 true "" "histogram [energy] of birds"
-
-PLOT
-1247
-234
-1447
-384
-plot 1
-NIL
-NIL
-0.0
-3.0
-0.0
-3.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -16777216 true "" "plot mean [escape-velocity-scale] of birds"
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -907,6 +785,28 @@ setup
 repeat 200 [ go ]
 @#$#@#$#@
 @#$#@#$#@
+<experiments>
+  <experiment name="experiment" repetitions="1" sequentialRunOrder="false" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="10000"/>
+    <enumeratedValueSet variable="n-ticks-per-trial">
+      <value value="10000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="kill-probability">
+      <value value="0.32"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="kill-radius">
+      <value value="3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="population">
+      <value value="200"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="kill-angle">
+      <value value="140"/>
+    </enumeratedValueSet>
+  </experiment>
+</experiments>
 @#$#@#$#@
 @#$#@#$#@
 default
