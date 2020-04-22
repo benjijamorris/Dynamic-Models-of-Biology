@@ -115,9 +115,9 @@ to reverse-attack-mode ;every 200 ticks, alternate whether the predator is attac
 end
 
 to mate-by-energy
-  if ticks mod 100 = 0 and ticks > 0 ;; don't mate at the first step
+  if ticks mod 10 = 0 and ticks > 0 ;; don't mate at the first step
   [
-    let logistic  (0.316998 / (1 +  87.1144 * exp(-0.0325973 * energy))) ; logistic function maxing out at 10% chance of reproduction at 100 energy
+    let logistic  (0.01 / (1 +   exp(-0.17 * (energy - 80)))) ; logistic function maxing out at 1% chance of reproduction at 100 energy, .5% at 80, .15% at 70
     if binomial 1 logistic > 0 [hatch 1 [
         set color green
         setxy (xcor  + random 10 - 5) (ycor + random 10 - 5) ; jitter from parent location so the birds aren't identical
@@ -340,7 +340,7 @@ population
 population
 1.0
 1000.0
-188.0
+200.0
 1.0
 1
 NIL
@@ -385,11 +385,47 @@ kill-angle
 kill-angle
 0
 180
-108.0
+140.0
 1
 1
 degrees
 HORIZONTAL
+
+PLOT
+1086
+242
+1286
+392
+plot 1
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot count birds"
+
+PLOT
+1107
+102
+1307
+252
+plot 2
+NIL
+NIL
+-10.0
+110.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "histogram [energy] of birds"
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -786,18 +822,28 @@ repeat 200 [ go ]
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="experiment" repetitions="1" sequentialRunOrder="false" runMetricsEveryStep="false">
+  <experiment name="experiment" repetitions="10" sequentialRunOrder="false" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
     <timeLimit steps="10000"/>
-    <enumeratedValueSet variable="n-ticks-per-trial">
-      <value value="10000"/>
-    </enumeratedValueSet>
+    <exitCondition>count birds = 0</exitCondition>
+    <metric>count birds</metric>
+    <metric>ticks</metric>
+    <metric>mean [detection-radius] of birds</metric>
+    <metric>variance [detection-radius] of birds</metric>
+    <metric>mean [detection-angle] of birds</metric>
+    <metric>variance [detection-angle] of birds</metric>
+    <metric>mean [escape-angle] of birds</metric>
+    <metric>variance [escape-angle] of birds</metric>
+    <metric>mean [escape-velocity-scale] of birds</metric>
+    <metric>variance [escape-velocity-scale] of birds</metric>
+    <metric>mean [neighbor-sensitivity] of birds</metric>
+    <metric>variance [neighbor-sensitivity] of birds</metric>
     <enumeratedValueSet variable="kill-probability">
-      <value value="0.32"/>
+      <value value="0.3"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="kill-radius">
-      <value value="3"/>
+      <value value="4"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="population">
       <value value="200"/>
