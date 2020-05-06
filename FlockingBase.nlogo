@@ -48,7 +48,7 @@ to setup
       set being-pursued false
       set neighbor-sensitivity random 5 + 1 ; between 1 and 5
     ]
-  create-predators 10
+  create-predators 12
     [set color white
      set size 2
      set velocity 0.2
@@ -73,6 +73,7 @@ to go
   ask predators [reverse-attack-mode]
   ask predators [kill]
   ask birds [mate-by-energy]
+  ;mate
 
   ;; the following line is used to make the turtles
   ;; animate more smoothly.
@@ -81,6 +82,18 @@ to go
   ;; animation, substitute the following line instead:
   ask turtles [ fd velocity ]
   tick
+end
+
+
+to mate
+  if ticks mod 200 = 0 and ticks > 0[
+    let number 0.005 * count birds
+    ask n-of number birds [hatch 1 [
+      set color green
+      setxy (xcor  + random 10 - 5) (ycor + random 10 - 5) ; jitter from parent location so the birds aren't identical
+      ]
+    ]
+  ]
 end
 
 
@@ -115,9 +128,10 @@ to reverse-attack-mode ;every 200 ticks, alternate whether the predator is attac
 end
 
 to mate-by-energy
-  if ticks mod 10 = 0 and ticks > 0 ;; don't mate at the first step
+  if ticks mod 200 = 0 and ticks > 0 ;; don't mate at the first step
   [
-    let logistic  (0.01 / (1 +   exp(-0.17 * (energy - 80)))) ; logistic function maxing out at 1% chance of reproduction at 100 energy, .5% at 80, .15% at 70
+    let logistic  (0.25 / (1 +   exp(-0.17 * (energy - 80))))
+    ;let logistic  (0.01 / (1 +   exp(-0.17 * (energy - 80)))) ; logistic function maxing out at 1% chance of reproduction at 100 energy, .5% at 80, .15% at 70
     if binomial 1 logistic > 0 [hatch 1 [
         set color green
         setxy (xcor  + random 10 - 5) (ycor + random 10 - 5) ; jitter from parent location so the birds aren't identical
@@ -340,7 +354,7 @@ population
 population
 1.0
 1000.0
-200.0
+400.0
 1.0
 1
 NIL
@@ -355,7 +369,7 @@ kill-radius
 kill-radius
 0
 10
-3.0
+4.0
 1
 1
 patches
@@ -370,7 +384,7 @@ kill-probability
 kill-probability
 0
 1
-0.32
+0.3
 0.01
 1
 NIL
@@ -426,6 +440,24 @@ false
 "" ""
 PENS
 "default" 1.0 0 -16777216 true "" "histogram [energy] of birds"
+
+PLOT
+813
+82
+1013
+232
+plot 3
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "histogram [velocity] of birds"
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -825,8 +857,8 @@ repeat 200 [ go ]
   <experiment name="experiment" repetitions="10" sequentialRunOrder="false" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
-    <timeLimit steps="10000"/>
-    <exitCondition>count birds = 0</exitCondition>
+    <timeLimit steps="15000"/>
+    <exitCondition>count birds = 3</exitCondition>
     <metric>count birds</metric>
     <metric>ticks</metric>
     <metric>mean [detection-radius] of birds</metric>
@@ -846,7 +878,32 @@ repeat 200 [ go ]
       <value value="4"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="population">
-      <value value="200"/>
+      <value value="400"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="kill-angle">
+      <value value="140"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="experiment" repetitions="10" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="15000"/>
+    <exitCondition>count birds &lt; 3</exitCondition>
+    <metric>count birds</metric>
+    <metric>[escape-velocity-scale] of birds</metric>
+    <metric>[escape-angle] of birds</metric>
+    <metric>[detection-radius] of birds</metric>
+    <metric>[detection-angle] of birds</metric>
+    <metric>[neighbor-sensitivity] of birds</metric>
+    <metric>ticks</metric>
+    <enumeratedValueSet variable="kill-probability">
+      <value value="0.3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="kill-radius">
+      <value value="4"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="population">
+      <value value="400"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="kill-angle">
       <value value="140"/>
